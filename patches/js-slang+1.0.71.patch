@@ -1595,12 +1595,66 @@ index 0000000..fc06060
 +ws = [ \t\n\r]*
 +
 +EOF = !.
-diff --git a/node_modules/js-slang/dist/parser/go-slang/lexer.js b/node_modules/js-slang/dist/parser/go-slang/lexer.js
+diff --git a/node_modules/js-slang/dist/parser/go-slang/index.d.ts b/node_modules/js-slang/dist/parser/go-slang/index.d.ts
 new file mode 100644
-index 0000000..d164546
+index 0000000..9bedaa8
 --- /dev/null
-+++ b/node_modules/js-slang/dist/parser/go-slang/lexer.js
-@@ -0,0 +1,292 @@
++++ b/node_modules/js-slang/dist/parser/go-slang/index.d.ts
+@@ -0,0 +1,9 @@
++import { Program } from 'estree';
++import { Chapter, Context } from '../../types';
++import { AcornOptions, Parser } from '../types';
++export declare class GoLangParser implements Parser<AcornOptions> {
++    constructor(chapter: Chapter);
++    parse(programStr: string, context: Context, options?: Partial<AcornOptions>, throwOnError?: boolean): Program | null;
++    validate(_ast: Program, _context: Context, _throwOnError: boolean): boolean;
++    toString(): string;
++}
+diff --git a/node_modules/js-slang/dist/parser/go-slang/index.js b/node_modules/js-slang/dist/parser/go-slang/index.js
+new file mode 100644
+index 0000000..4c3cd80
+--- /dev/null
++++ b/node_modules/js-slang/dist/parser/go-slang/index.js
+@@ -0,0 +1,328 @@
++"use strict";
++Object.defineProperty(exports, "__esModule", { value: true });
++exports.GoLangParser = void 0;
++const types_1 = require("../../types");
++const errors_1 = require("../errors");
++const utils_1 = require("../utils");
++class GoLangParser {
++    constructor(chapter) {
++        this.chapter = chapter;
++    }
++
++    parse(programStr, context, options = {}, throwOnError = false) {
++        try {
++            // Reset and tokenize the input
++            const ast = tokenize(programStr);
++            return {
++                type: "Program",
++                body: ast,
++                sourceType: "module"
++            };
++            
++        } catch (error) {
++            if (throwOnError) throw error;
++            return null;
++        }
++    }
++
++    validate(ast, context, throwOnError = false) {
++        // Validate the AST based on your language's semantics
++        // This is a placeholder function that always returns true
++        return true;
++    }
++
++    toString() {
++        return `GoLangParser: chapter ${this.chapter}`;
++    }
++}
++
++const { __esModule } = require('js-slang/dist/parser/parser');
 +const moo = require('moo');
 +
 +let lexer = moo.compile({
@@ -1889,10 +1943,304 @@ index 0000000..d164546
 +    };
 +}
 +
++exports.GoLangParser = GoLangParser
+\ No newline at end of file
+diff --git a/node_modules/js-slang/dist/parser/go-slang/lexer.js b/node_modules/js-slang/dist/parser/go-slang/lexer.js
+new file mode 100644
+index 0000000..24a292b
+--- /dev/null
++++ b/node_modules/js-slang/dist/parser/go-slang/lexer.js
+@@ -0,0 +1,290 @@
++
++const moo = require('moo');
++
++let lexer = moo.compile({
++    NL:        { match: /\n/, lineBreaks: true },
++    WS:        /[ \t]+/,
++    comment:   /\/\/.*?$/,
++    func_dec:   "func",
++    ret:       "return",
++    for:        "for",
++    if:         "if",
++    go:         "go",
++    else:       "else",
++    type:      ['int', 'float', 'string', 'bool'],
++    number:    /0|[1-9][0-9]*/,
++    string:    /"(?:\\["\\]|[^\n"\\])*"/,
++    boolean:   ['true', 'false'],
++    identifier: /[a-zA-Z_][a-zA-Z0-9_]*/,
++    not:       '!',
++    and:       '&&',
++    or:        '||',
++    plus:      '+',
++    minus:     '-',
++    mult:      '*',
++    div:       '/',
++    mod:        '%',
++    assign:    ':=',
++    lt:        '<',
++    gt:        '>',
++    equals:    '===',
++    lparen:    '(',
++    rparen:    ')',
++    lbrace:    '{',
++    rbrace:    '}',
++    keyword:   ['while', 'if', 'else', 'return'],
++    comma:     ',',
++    colon:     ':',
++});
++
++function tokenize(input) {
++    lexer.reset(input);
++    let tokens = [], currentToken;
++    while (currentToken = lexer.next()) {
++        if (currentToken.type !== 'WS' && currentToken.type !== 'comment') {
++            tokens.push(currentToken);
++        }
++    }
++
++    return {
++        tag: "blk",
++        body: parseTokens(tokens, 0).output[0]
++    }
++}
++
++function parseTokens(tokens, startIndex) {
++    let output = [];
++    let i = startIndex;
++    let stmts = [];
++
++    while (i < tokens.length) {
++        let token = tokens[i];
++        switch (token.type) {
++            case 'NL':
++                // New line might indicate the end of a statement
++                // if (stmts.length > 0) {
++                //     // If there are collected statements, push them as a sequence
++                //     output.push({tag: "seq", stmts: stmts});
++                //     stmts = []; // Reset for the next possible sequence
++                // }
++                i++;
++                break;
++            case "go":
++                // Expect the next tokens to form a function call
++                i++; // Move past 'go'
++                const goroutineResult = parseFunctionCall(tokens, i);
++                stmts.push({
++                    tag: 'goroutine',
++                    call: goroutineResult.result
++                });
++                i = goroutineResult.nextIndex; // Adjust index after processing the goroutine call
++                break;
++            case "for":
++                const forResult = parseFor(tokens, i);
++                stmts.push(forResult.result);
++                i = forResult.nextIndex - 1; // Adjust index after processing the loop
++                break;
++            case "if":
++                const ifResult = parseConditional(tokens, i);
++                stmts.push(ifResult.result);
++                i = ifResult.nextIndex; // should be correctly set by parseConditional
++                break;
++            case "ret":
++                const exprResult = parseExpression(tokens, i + 1);
++                stmts.push({
++                    tag: "ret",
++                    expr: exprResult.result
++                });
++                i = exprResult.nextIndex; // move beyond the parsed expression
++                break;
++            case "func_dec":
++                // Similar to above cases
++                break;
++            case 'identifier':
++                if (tokens[i + 1] && tokens[i + 1].type === 'assign') {
++                    i += 2; // Skip 'assign' and to the expression
++                    const expressionResult = parseExpression(tokens, i);
++                    stmts.push({
++                        tag: 'let',
++                        sym: token.value,
++                        expr: expressionResult.result
++                    });
++                    i = expressionResult.nextIndex; // move beyond the parsed expression
++                } else {
++                    stmts.push({ tag: 'nam', val: token.value });
++                    i++;
++                }
++                break;
++            case 'not':
++                // Ensure unary operation parsing also correctly updates `i`
++                let operand = tokens[++i];
++                    stmts.push({
++                        tag: 'unop',
++                        sym: '!',
++                        frst: { tag: 'lit', val: operand.value }
++                    });
++                i++;
++                break;
++            default:
++                if (['plus', 'minus', 'mult', 'div', 'lt', 'gt', 'equals', 'and', 'or', 'mod'].includes(token.type)) {
++                    let left = output.pop();
++                    i++; // Move to right operand
++                    const rightResult = parseExpression(tokens, i);
++                    stmts.push({
++                        tag: 'binop',
++                        sym: token.value,
++                        frst: left,
++                        scnd: rightResult.result
++                    });
++                    i = rightResult.nextIndex; // move beyond the parsed right expression
++                } else {
++                    stmts.push({ tag: 'lit', val: token.value });
++                    i++;
++                }
++                break;
++        }
++    }
++
++    // If there are remaining statements after the last newline, wrap them in a sequence
++    if (stmts.length > 1) {
++        output.push({tag: "seq", stmts: stmts});
++    } else {
++        output.push(stmts[0])
++    }
++
++    return {output: output, nextIndex: i};
++}
++
++function parseComplexStructure(tokens, startIndex, type) {
++    // Parsing complex structures like functions, loops, conditions
++    // This function needs to be implemented based on your specific language constructs
++    // Placeholder function below
++    return {
++        result: {tag: type, content: "Parsed content of " + type},
++        nextIndex: startIndex + 1 // Just a placeholder increment
++    };
++}
++
++function parseConditional(tokens, startIndex) {
++    let i = startIndex + 1; // Move past 'if'
++    let condition = [];
++    while (i < tokens.length && tokens[i].type !== 'lbrace') {
++        condition.push(tokens[i]);
++        i++;
++    }
++    if (i < tokens.length) i++; // Safely move past '{'
++    const conditionExpr = parseTokens(condition, 0).output;
++
++    let cons = [];
++    let isLbrace = 0;
++    while (i < tokens.length && (tokens[i].type !== 'rbrace' || isLbrace > 0)) {
++        if (tokens[i].type === 'lbrace') isLbrace++;
++        if (tokens[i].type === 'rbrace') isLbrace--;
++        cons.push(tokens[i]);
++        i++;
++    }
++    if (i < tokens.length) i++; // Safely move past '}'
++    const consExpr = parseTokens(cons, 0).output;
++
++    let alt = { "tag": "seq", "stmts": [] };
++    if (i < tokens.length && tokens[i].type === "else") {
++        i++;
++        if (i < tokens.length && tokens[i].type === 'if') {
++            const altResult = parseConditional(tokens, i);
++            alt = altResult.result;
++            i = altResult.nextIndex;
++        } else if (i < tokens.length && tokens[i].type === 'lbrace') {
++            let elseCons = [];
++            i++; // Move past '{'
++            while (i < tokens.length && tokens[i].type !== 'rbrace') {
++                elseCons.push(tokens[i]);
++                i++;
++            }
++            if (i < tokens.length) i++; // Safely move past '}'
++            const elseExpr = parseTokens(elseCons, 0).output;
++            alt = elseExpr;
++        }
++    }
++
++    return {
++        result: {
++            tag: "cond_stmt",
++            pred: conditionExpr,
++            cons: consExpr,
++            alt: alt
++        },
++        nextIndex: i
++    };
++}
++
++// This is a placeholder, you should implement parsing based on actual expected structures
++function parseExpression(tokens, startIndex) {
++    let expr = [];
++    let i = startIndex;
++    while (i < tokens.length && tokens[i].type !== 'rbrace' && tokens[i].type !== 'NL') {
++        expr.push(tokens[i]);
++        i++;
++    }
++    return {
++        result: tokenize(expr.map(t => t.value).join(" "))[0], // Concatenating expressions for simplicity
++        nextIndex: i
++    };
++}
++
++function parseFor(tokens, startIndex) {
++    let i = startIndex + 1; // Move past 'for'
++    let condition = [];
++    // Ensure i is within bounds and check for the start of the body
++    while (i < tokens.length && tokens[i].type !== 'lbrace') {
++        condition.push(tokens[i]);
++        i++;
++    }
++    const conditionExpr = parseTokens(condition, 0).output;
++
++    let body = [];
++    if (i < tokens.length) i++; // Safely move past '{'
++    // Ensure i is within bounds and parse until the matching '}'
++    let isLbrace = 0;
++    while (i < tokens.length && (tokens[i].type !== 'rbrace' || isLbrace > 0)) {
++        if (tokens[i].type === 'lbrace') isLbrace++;
++        if (tokens[i].type === 'rbrace') isLbrace--;
++        body.push(tokens[i]);
++        i++;
++    }
++    const bodyExpr = parseTokens(body, 0).output;
++    if (i < tokens.length) i++; // Safely move past '}'
++
++    return {
++        result: {
++            tag: "for",
++            pred: conditionExpr,
++            body: bodyExpr
++        },
++        nextIndex: i+1
++    };
++}
++
++function parseFunctionCall(tokens, startIndex) {
++    let i = startIndex;
++    let functionName = tokens[i].value; // Assuming the function name immediately follows 'go'
++    i++; // Move past function name
++    let args = [];
++    if (tokens[i].type === 'lparen') {
++        i++; // Move past '('
++        while (i < tokens.length && tokens[i].type !== 'rparen') {
++            args.push(tokens[i].value); // Simplify: assume args are literals or identifiers
++            i++;
++            if (tokens[i].type === 'comma') i++; // Skip commas
++        }
++        i++; // Move past ')'
++    }
++    return {
++        result: {
++            func: functionName,
++            args: args
++        },
++        nextIndex: i
++    };
++}
 +// Test with a sample input
 +console.log(tokenize('5 \n 2'));
-+
-+
 diff --git a/node_modules/js-slang/dist/parser/go-slang/testParser.js b/node_modules/js-slang/dist/parser/go-slang/testParser.js
 new file mode 100644
 index 0000000..2e5b5f2
@@ -1910,6 +2258,28 @@ index 0000000..2e5b5f2
 +} catch (error) {
 +    console.error("Parsing error:", error.message);
 +}
+diff --git a/node_modules/js-slang/dist/parser/parser.js b/node_modules/js-slang/dist/parser/parser.js
+index 94ebc52..bc8bed3 100644
+--- a/node_modules/js-slang/dist/parser/parser.js
++++ b/node_modules/js-slang/dist/parser/parser.js
+@@ -8,6 +8,8 @@ const python_1 = require("./python");
+ const scheme_1 = require("./scheme");
+ const source_1 = require("./source");
+ const typed_1 = require("./source/typed");
++const go_1 = requre("./go-slang")
++import { GoLangParser } from "js-slang/dist/parser/go-slang";
+ function parse(programStr, context, options, throwOnError) {
+     let parser;
+     switch (context.chapter) {
+@@ -27,6 +29,8 @@ function parse(programStr, context, options, throwOnError) {
+         case types_1.Chapter.FULL_TS:
+             parser = new fullTS_1.FullTSParser();
+             break;
++        case types_1.Chapter.GO_1:
++            parser = new GoLangParser();
+         default:
+             switch (context.variant) {
+                 case types_1.Variant.TYPED:
 diff --git a/node_modules/js-slang/dist/types.d.ts b/node_modules/js-slang/dist/types.d.ts
 index ac1490c..9728d9f 100644
 --- a/node_modules/js-slang/dist/types.d.ts
