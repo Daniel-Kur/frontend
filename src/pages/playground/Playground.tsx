@@ -1,3 +1,4 @@
+import axios from "axios";
 import { Classes } from '@blueprintjs/core';
 import { IconNames } from '@blueprintjs/icons';
 import { Ace, Range } from 'ace-builds';
@@ -15,7 +16,8 @@ import {
   beginDebuggerPause,
   beginInterruptExecution,
   debuggerReset,
-  debuggerResume
+  debuggerResume,
+  evalInterpreterSuccess
 } from 'src/commons/application/actions/InterpreterActions';
 import {
   loginGitHub,
@@ -47,7 +49,7 @@ import {
   changeStepLimit,
   chapterSelect,
   clearReplOutput,
-  evalEditor,
+  //evalEditor,
   evalRepl,
   navigateToDeclaration,
   promptAutocomplete,
@@ -135,6 +137,19 @@ import {
   makeSubstVisualizerTabFrom,
   mobileOnlyTabIds
 } from './PlaygroundTabs';
+
+
+const exec = async (code: any) => {
+  try {
+    const codeData = String(code);
+    console.log(codeData)
+    const response = await axios.post('http://localhost:3000/exec', { key: code });
+    return response.data;  // Assuming the server sends back data in the response's body
+  } catch (error) {
+    console.error('Error:', error.response);
+    return null; // Return null or appropriate error handling
+  }
+};
 
 export type PlaygroundProps = {
   isSicpEditor?: boolean;
@@ -469,7 +484,21 @@ const Playground: React.FC<PlaygroundProps> = props => {
 
   const autorunButtonHandlers = useMemo(() => {
     return {
-      handleEditorEval: () => dispatch(evalEditor(workspaceLocation)),
+      //handleEditorEval: () => dispatch(evalEditor(workspaceLocation)),
+      handleEditorEval: async () => {
+        const code = getEditorValue(); 
+        let data = await exec(code);
+        if (data !== null) {  // Check if data is not null
+          dispatch(clearReplOutput(workspaceLocation))
+          if (data == "undefined") {
+            data = undefined
+          }
+          dispatch(evalInterpreterSuccess(data, workspaceLocation));
+        } else {
+          
+          
+        }
+      },
       handleInterruptEval: () => dispatch(beginInterruptExecution(workspaceLocation)),
       handleToggleEditorAutorun: () => dispatch(toggleEditorAutorun(workspaceLocation)),
       handleDebuggerPause: () => dispatch(beginDebuggerPause(workspaceLocation)),

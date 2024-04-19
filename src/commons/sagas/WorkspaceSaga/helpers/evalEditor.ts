@@ -48,6 +48,8 @@ export function* evalEditor(
     state.session.remoteExecutionSession
   ]);
 
+  console.log("ini eval editor")
+
   if (activeEditorTabIndex === null) {
     throw new Error('Cannot evaluate program without an entrypoint file.');
   }

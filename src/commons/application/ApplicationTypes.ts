@@ -123,7 +123,8 @@ export enum SupportedLanguage {
   SCHEME = 'Scheme',
   PYTHON = 'Python',
   JAVA = 'Java',
-  C = 'C'
+  C = 'C',
+  GO = "Go"
 }
 
 export const SUPPORTED_LANGUAGES = [
@@ -131,8 +132,22 @@ export const SUPPORTED_LANGUAGES = [
   SupportedLanguage.SCHEME,
   SupportedLanguage.PYTHON,
   SupportedLanguage.JAVA,
-  SupportedLanguage.C
+  SupportedLanguage.C,
+  SupportedLanguage.GO
 ];
+
+const goSubLanguages: Array<Pick<SALanguage, 'chapter' | 'variant' | 'displayName'>> = [
+  { chapter: Chapter.GO_1, variant: Variant.DEFAULT, displayName: 'Go \xa71' },
+];
+
+export const goLanguages: SALanguage[] = goSubLanguages.map(sublang => {
+  return {
+    ...sublang,
+    mainLanguage: SupportedLanguage.GO,
+    supports: { repl: true, dataVisualizer: false }
+  };
+});
+
 
 /**
  * Defines the languages available for use on Source Academy,
@@ -316,7 +331,8 @@ export const ALL_LANGUAGES: readonly SALanguage[] = [
   ...schemeLanguages,
   ...pyLanguages,
   ...javaLanguages,
-  ...cLanguages
+  ...cLanguages,
+  ...goLanguages
 ];
 // TODO: Remove this function once logic has been fully migrated
 export const getLanguageConfig = (

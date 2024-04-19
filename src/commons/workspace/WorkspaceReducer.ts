@@ -312,15 +312,20 @@ const newWorkspaceReducer = createReducer(defaultWorkspaceManager, builder => {
       state[workspaceLocation].hasTokenCounter = false;
     })
     .addCase(evalEditor, (state, action) => {
+      console.log("button run ditekan")
+      console.log(action)
       const workspaceLocation = getWorkspaceLocation(action);
       state[workspaceLocation].isRunning = true;
       state[workspaceLocation].isDebugging = false;
     })
     .addCase(evalRepl, (state, action) => {
+      console.log("repl")
       const workspaceLocation = getWorkspaceLocation(action);
       state[workspaceLocation].isRunning = true;
     })
     .addCase(evalInterpreterSuccess, (state, action) => {
+      console.log("eval interpreter")
+      console.log(action)
       const workspaceLocation = getWorkspaceLocation(action);
       const execType = state[workspaceLocation].context.executionMethod;
       const tokens = state[workspaceLocation].tokenCount;
@@ -785,6 +790,7 @@ const newWorkspaceReducer = createReducer(defaultWorkspaceManager, builder => {
       state[workspaceLocation].editorTabs = newEditorTabs;
     })
     .addCase(updateReplValue, (state, action) => {
+      console.log("update repl")
       const workspaceLocation = getWorkspaceLocation(action);
       state[workspaceLocation].replValue = action.payload.newReplValue;
     })
