@@ -9,7 +9,6 @@ import {
   SALanguage,
   schemeLanguages,
   sourceLanguages,
-  goLanguages,
   SUPPORTED_LANGUAGES,
   SupportedLanguage
 } from 'src/commons/application/ApplicationTypes';
@@ -27,7 +26,6 @@ const defaultSublanguages: {
   [SupportedLanguage.SCHEME]: schemeLanguages[0],
   [SupportedLanguage.JAVA]: javaLanguages[0],
   [SupportedLanguage.C]: cLanguages[0],
-  [SupportedLanguage.GO] : goLanguages[0]
 };
 
 const NavigationBarLangSelectButton = () => {

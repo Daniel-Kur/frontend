@@ -121,10 +121,9 @@ export enum StoriesRole {
 export enum SupportedLanguage {
   JAVASCRIPT = 'JavaScript',
   SCHEME = 'Scheme',
-  PYTHON = 'Python',
+  PYTHON = 'GO',
   JAVA = 'Java',
   C = 'C',
-  GO = "Go"
 }
 
 export const SUPPORTED_LANGUAGES = [
@@ -133,20 +132,7 @@ export const SUPPORTED_LANGUAGES = [
   SupportedLanguage.PYTHON,
   SupportedLanguage.JAVA,
   SupportedLanguage.C,
-  SupportedLanguage.GO
 ];
-
-const goSubLanguages: Array<Pick<SALanguage, 'chapter' | 'variant' | 'displayName'>> = [
-  { chapter: Chapter.GO_1, variant: Variant.DEFAULT, displayName: 'Go \xa71' },
-];
-
-export const goLanguages: SALanguage[] = goSubLanguages.map(sublang => {
-  return {
-    ...sublang,
-    mainLanguage: SupportedLanguage.GO,
-    supports: { repl: true, dataVisualizer: false }
-  };
-});
 
 
 /**
@@ -231,7 +217,7 @@ export function isSchemeLanguage(chapter: Chapter): boolean {
 }
 
 const pySubLanguages: Array<Pick<SALanguage, 'chapter' | 'variant' | 'displayName'>> = [
-  { chapter: Chapter.PYTHON_1, variant: Variant.DEFAULT, displayName: 'Python \xa71' }
+  { chapter: Chapter.PYTHON_1, variant: Variant.DEFAULT, displayName: 'GO \xa71' }
   //{ chapter: Chapter.PYTHON_2, variant: Variant.DEFAULT, displayName: 'Python \xa72' },
   //{ chapter: Chapter.PYTHON_3, variant: Variant.DEFAULT, displayName: 'Python \xa73' },
   //{ chapter: Chapter.PYTHON_4, variant: Variant.DEFAULT, displayName: 'Python \xa74' }
@@ -332,13 +318,13 @@ export const ALL_LANGUAGES: readonly SALanguage[] = [
   ...pyLanguages,
   ...javaLanguages,
   ...cLanguages,
-  ...goLanguages
 ];
 // TODO: Remove this function once logic has been fully migrated
 export const getLanguageConfig = (
   chapter: Chapter,
   variant: Variant = Variant.DEFAULT
 ): SALanguage => {
+  chapter = -4
   const languageConfig = ALL_LANGUAGES.find(
     lang => lang.chapter === chapter && lang.variant === variant
   );

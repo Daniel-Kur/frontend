@@ -487,13 +487,14 @@ const Playground: React.FC<PlaygroundProps> = props => {
       //handleEditorEval: () => dispatch(evalEditor(workspaceLocation)),
       handleEditorEval: async () => {
         const code = getEditorValue(); 
-        let data = await exec(code);
+        const data = await exec(code);
         if (data !== null) {  // Check if data is not null
           dispatch(clearReplOutput(workspaceLocation))
-          if (data == "undefined") {
-            data = undefined
+          if (data.length !== 0) {
+            for (let i = 0; i < data.length; i++) {
+              dispatch(evalInterpreterSuccess(data[i], workspaceLocation));
+            }
           }
-          dispatch(evalInterpreterSuccess(data, workspaceLocation));
         } else {
           
           
